@@ -1,0 +1,288 @@
+---
+title: "Práctica 2: Limpieza y validación de los datos"
+author: "Autor: Alberto Giménez Aragón"
+date: "Enero 2021"
+output:
+  pdf_document:
+    highlight: breezedark
+    toc: yes
+    df_print: kable
+    toc_depth: 2
+    number_sections: yes
+
+  html_document:
+    highlight: breezedark
+    number_sections: yes
+    theme: united    
+    toc: yes
+    toc_depth: 2
+    df_print: paged
+    dev: svg
+  word_document: default
+---
+
+# Descripción del dataset
+
+Para la realización de esta práctica he escogido el dataset que generamos en la práctica 1. Este dataset recoge una gran variedad de datos sobre los distintos hoteles repartidos a lo largo de la ciudad de Barcelona y alrededores, los cuales fueron obtenidos mediante *web scraping* a fecha de 2 de noviembre de 2020.
+
+A continuación, se detallan todos los atributos de los que dispone el dataset.
+
+- **Name**: Nombre del Hotel 
+- **Stars**: Estrellas del hotel, entre 1 y 5 estrellas
+- **Score**: Calificación del hotel según los usuarios.
+- **Score Location**: Calificación de la ubicación del hotel según los usuarios (de 1.0 a 5.0).
+- **Score Cleaning**: Calificación de la limpieza del hotel según los usuarios (de 1.0 a 5.0).
+- **Score Service**: Calificación del servicio del hotel según los usuarios (de 1.0 a 5.0).
+- **Score Value for Money**: Calificación de la relación calidad/precio del hotel según los usuarios (de 1.0 a 5.0).
+- **Price**: Precio actual por noche del hotel 
+- **Price Range**: Rango de precios por noche en el que se encuentra el hotel
+- **Ranking**: Ranking Tripadvisor del hotel respecto a otro hoteles de la ciudad 
+- **Number opinions**: Número de opiniones dejadas por los huéspedes a través de Tripadvisor
+- **Number opinions excellent**: Número de opiniones excelentes dejadas por los huéspedes a través de Tripadvisor
+- **Number opinions good**: Número de opiniones buenas dejadas por los huéspedes a través de Tripadvisor 
+- **Number opinions normal**: Número de opiniones normales dejadas por los huéspedes a través de Tripadvisor 
+- **Number opinions bad**: Número de opiniones malas dejadas por los huéspedes a través de Tripadvisor 
+- **Number opinions awful**: Número de opiniones pésimas dejadas por los huéspedes a través de Tripadvisor
+- **Number QA**: Número de preguntas y respuestas de los usuarios
+- **Nearby restaurants**: Número de restaurantes cercanos al hotel 
+- **Nearby attractions**: Número de atracciones turísticas cercanas al hotel 
+- **Zone**: Zona en la que se sitúa el hotel 
+- **Latitude/Longitude**: Latitud y longitud del hotel 
+- **Swimming pool**: Nos dice si el hotel dispone de este servicio 
+- **Bar**: Nos dice si el hotel dispone de este servicio 
+- **Restaurant**: Nos dice si el hotel dispone de este servicio 
+- **Breakfast**: Nos dice si el hotel dispone de este servicio 
+- **Gym**: Nos dice si el hotel dispone de este servicio 
+- **Reception 24h**: Nos dice si el hotel dispone de este servicio 
+- **Admit pets**: Nos dice si el hotel dispone de este servicio 
+- **Air conditioning**: Nos dice si el hotel dispone de este servicio
+- **Strong box**: Nos dice si el hotel dispone de este servicio 
+- **Rooms**: Número de habitaciones del hotel
+- **Suites**: Nos dice si el hotel dispone de este tipo de habitaciones
+- **Sea View Rooms**: Nos dice si el hotel dispone de este tipo de habitaciones
+- **Non-smoking Rooms**: Nos dice si el hotel dispone de este tipo de habitaciones
+- **Landmark View Rooms**: Nos dice si el hotel dispone de este tipo de habitaciones
+- **City View Rooms**: Nos dice si el hotel dispone de este tipo de habitaciones
+- **Family Rooms**: Nos dice si el hotel dispone de este tipo de habitaciones
+- **Style**: Estilo del hotel
+- **Tripadvisor Clasification**: Calificación de Tripadvisor sobre la facilidad de realizar actividades y encontrar restaurantes a corta distancia del hotel.
+- **Language Spanish**: Indica si el hotel habla este idioma o no
+- **Language Catalan**: Indica si el hotel habla este idioma o no
+- **Language French**: Indica si el hotel habla este idioma o no
+- **Language English**: Indica si el hotel habla este idioma o no
+- **Language Italian**: Indica si el hotel habla este idioma o no
+- **Language Bulgarian**: Indica si el hotel habla este idioma o no
+- **Language Russian**: Indica si el hotel habla este idioma o no
+- **Language Portuguese**: Indica si el hotel habla este idioma o no
+- **Prat Distance**: Distancia en kilómetros al aeropuerto del Prat
+- **Timestamp**: Fecha/hora de recogida de los datos 
+
+
+Con la elección de este dataset, se pretende dar respuesta a diferentes preguntas sobre los hoteles, con el objetivo de ver si algunos atributos varían o no respecto a los barrios donde se sitúan los hoteles o entre diferentes rangos de precio. De esta forma, un posible turista puede ayudarse por este estudio para elegir entre los hoteles que más le convengan. Algunas de estas preguntas podrían ser las siguientes.
+
+- ¿Hay relación entre las estrellas de un hotel y la valoración de los usuarios?
+- ¿Hay diferencias en los precios de hoteles entre diferentes barrios de Barcelona?
+- ¿Es cierto que los hoteles más caros ofrecen una mejor limpieza de sus instalaciones? ¿Y un mejor servicio?
+- ¿Son más caros aquellos hoteles que admiten mascotas de los que no lo hacen? ¿Y los que tienen gimnasio?
+- ¿Se hablan más idiomas en los hoteles de un barrio respecto a los demás? ¿Y en los más caros respecto a los demás?
+- ¿La relación calidad precio es mayor en hoteles más baratos que en los caros?
+- ¿Hay relación entre la puntuación que los usuarios atribuyen a la ubicación del hotel respecto al número de restaurantes y atracciones cercanas?
+- ¿Los hoteles con menos estrellas suelen tener más opiniones de usuarios que los de más estrellas?
+- ¿Hay más habitaciones disponibles en algún barrio?
+
+A parte, se intentará generar algún modelo de clasificación para predecir los rangos de precios de los hoteles según el resto de características.
+
+
+# Integración y selección de los datos de interés a analizar
+
+El primer paso que debemos hacer es cargar el dataset que se va a utilizar. Lo leemos y utilizamos la función `str` para ver su estructura y una muestra de los datos.
+
+```{r}
+library(stringr)
+library(ggplot2)
+library(gridExtra)
+
+df <- read.csv("tripadvisor_barcelona_hotels.csv", encoding = "UTF-8")
+str(df, strict.width="wrap")
+```
+
+En cuanto a la selección de datos, vamos a quedarnos con aquellos que tengan un rango de precio informado, ya que como vamos a explicar será una de las variable objetivo del análisis. En cuanto a los diferentes atributos, vamos a empezar eliminando las columnas `name` y `timestamp`, ya que la primera contiene el nombre del hotel, el cual no es necesario para los análisis y el segundo la fecha de la captura de los datos, que tampoco nos aporta información relativa al hotel.
+
+Observamos también dos columnas relativas al precio. `price` contiene el precio por noche en el momento de la extracción del dato proporcionado por terceros (Booking,
+Expedia...). `price_range` es una estimación más general del precio del hotel y es proporcionado por la propia Tripadvisor. Además, la variable `price`, a parte de tener un carácter temporal,  tiene muchos valores nulos, como veremos más tarde. Por este motivo, eliminaremos la variable `price` y obtendremos los precios directamente de la variable `price_range`.
+
+```{r}
+# eliminamos las 3 variables mencionadas
+df <- df[, !(names(df) %in% c("name", "timestamp", "price"))]
+# eliminamos las filas que tengan nulos en price_range (string vacío)
+df <- df[df$price_range != "",]
+```
+
+
+# Limpieza de los datos
+
+## Preprocesado
+
+El primer paso será  convertir el tipo de las variables. Vamos a empezar convirtiendo a tipo factor las variables categóricas. 
+
+```{r}
+catergorical_vars <- c("has_swimming_pool", "has_bar", "has_restaurant", "has_breakfast", 
+                       "has_gym", "has_reception_24h" , "has_ac", "has_strongbox", 
+                       "admits_pets", "suites", "sea_views_rooms",  "non_smoking_rooms", 
+                       "landmarks_views_rooms", "city_views_rooms", "family_rooms", 
+                       "style", "language_spanish", "language_catalan", "language_french", 
+                       "language_english", "language_italian", "language_bulgarian", 
+                       "language_russian", "language_portuguese")
+for(v in catergorical_vars){
+  df[[v]] <- factor(df[[v]])
+}
+```
+
+A continuación, debemos estandarizar la variable `price_range`. Esta variable son rangos de precios medios. El problema es que estos rangos no están predefinidos de ninguna manera. Para solucionar este problema, vamos a transformar la variable para obtener el precio medio del intervalo y luego discretizar la variable en los valores "Barato", "Medio", "Caro" y "Lujo" según las siguientes reglas:
+
+- **Barato:** precio < 60 euros
+- **Medio:** 60 >= precio < 150
+- **Caro:** 150 >= precio < 300
+- **Lujo:** precio >= 300
+
+A continuación, se muestra la variable antes y después de esta transformación.
+
+```{r results='hold'}
+head(df$price_range, 3)
+price_range_clean <- str_replace_all(df$price_range, "€|[:space:]|\\.", "")
+price_range_clean <- str_split(price_range_clean, "-")
+new_price_range <- rep(NA, length(price_range_clean))
+for(i in 1:length(price_range_clean)){
+  range <- as.list(price_range_clean[i][[1]])
+  if(range[[1]] != ""){
+    m <- mean(c(strtoi(range[[1]]), strtoi(range[[2]])))
+    new_price_range[i] <- m
+  }
+}
+df$price_range <- new_price_range
+head(df$price_range, 3)
+
+# discretizar
+df$price_range_disc[df$price_range < 60] <- "Barato"
+df$price_range_disc[(df$price_range >= 60) & (df$price_range < 150)] <- "Medio"
+df$price_range_disc[(df$price_range >= 150) & (df$price_range < 300)] <- "Caro"
+df$price_range_disc[df$price_range >= 300] <- "Lujo"
+df$price_range_disc <- factor(df$price_range_disc, 
+                              levels = c("Barato", "Medio", "Caro", "Lujo"))
+df$price_range <- NULL
+head(df$price_range_disc, 3)
+```
+
+Por último, vamos a realizar un procesado  para la variable `tripadvisor_clasification`. Es una puntuación sobre 100 y está expresada como un string de la forma "88 de 100", por ejemplo. El objetivo es obtener la puntuación y convertirla a entero.
+
+```{r results='hold'}
+head(df$tripadvisor_clasification, 5)
+new_class <- rep(NA, nrow(df))
+for(i in 1:nrow(df)){
+  cl <- df$tripadvisor_clasification[i]
+  index <- str_locate(cl, " de 100")[1]
+  new_class[i] <- as.integer(str_sub(cl, 1, index))
+}
+df$tripadvisor_clasification <- new_class
+head(df$tripadvisor_clasification, 5)
+```
+
+
+## Elementos nulos
+
+A continuación, vamos a inspeccionar el dataset en busca de valores nulos.
+
+```{r}
+colSums(is.na(df))
+```
+
+Dependiendo de la variable, vamos a tratar los nulos de forma diferente.
+
+- Las que hacen referencia al número de opiniones las vamos a imputar con un 0, ya que si es nulo es que no se ha encontrado ninguna opinión.
+- Para la distancia al aeropuerto del Prat, latitud y longitud vamos a imputar los nulos con la mediana, ya que al estar en Barcelona es muy probable que estos valores sean similares al resto.
+- Para las atracciones y restaurantes cercanos vamos a imputar también con la mediana (solo 5 nulos).
+
+
+```{r}
+# opinión
+opinion_vars <- c("opinions", "opinions_excellent", "opinions_good", "opinions_normal", 
+                  "opinions_bad", "opinions_awful", "num_qa")
+for(var in opinion_vars){
+  df[[var]][is.na(df[[var]])] <- 0
+}
+# prat_distance, latitude, longitude, nearby_restaurants,  nearby_attractions
+median_vars <- c("prat_distance", "latitude", "longitude", "nearby_restaurants", 
+                 "nearby_attractions")
+for(var in median_vars){
+  df[[var]][is.na(df[[var]])] <- median(df[[var]], na.rm = TRUE)
+}
+colSums(is.na(df))
+```
+
+De momento no vamos a imputar el resto de nulos. Será en el momento que necesitemos usar estas columnas cuando eliminaremos aquellas filas que tengan NA's, ya que debido a que en algunas columnas el porcentaje de nulos está cerca del 20%, es mejor eliminarlas para no desvirtuar las posibles conclusiones. Sin embargo, no las vamos a eliminar ahora, ya que pueden tener información importante para el análisis del resto de variables.
+
+## Valores extremos
+
+Vamos a inspeccionar las variables numéricas en busca de outliers. Nos ayudaremos de un histograma y de un boxplot de cada variable.
+
+```{r results='asis', warning=FALSE, echo=FALSE, fig.width=12, fig.height=15}
+hist1 <- ggplot(data=df, aes(x=stars)) + geom_histogram(binwidth = 1)
+box1 <- ggplot(data=df, aes(stars)) + geom_boxplot()
+hist2 <- ggplot(data=df, aes(x=score)) + geom_histogram(binwidth = 0.5)
+box2 <- ggplot(data=df, aes(score)) + geom_boxplot()
+hist3 <- ggplot(data=df, aes(x=score_location)) + geom_histogram(binwidth = 0.5)
+box3 <- ggplot(data=df, aes(score_location)) + geom_boxplot()
+hist4 <- ggplot(data=df, aes(x=score_cleaning)) + geom_histogram(binwidth = 0.5)
+box4 <- ggplot(data=df, aes(score_cleaning)) + geom_boxplot()
+hist5 <- ggplot(data=df, aes(x=score_service)) + geom_histogram(binwidth = 0.5)
+box5 <- ggplot(data=df, aes(score_service)) + geom_boxplot()
+hist6 <- ggplot(data=df, aes(x=score_value_money)) + geom_histogram(binwidth = 0.5)
+box6 <- ggplot(data=df, aes(score_value_money)) + geom_boxplot()
+hist7 <- ggplot(data=df, aes(x=ranking)) + geom_histogram(binwidth = 50)
+box7 <- ggplot(data=df, aes(ranking)) + geom_boxplot()
+hist8 <- ggplot(data=df, aes(x=opinions)) + geom_histogram(binwidth = 100)
+box8 <- ggplot(data=df, aes(opinions)) + geom_boxplot()
+grid.arrange(hist1, box1, hist2, box2, hist3, box3, hist4, box4, hist5, box5, hist6, box6,
+             hist7, box7, hist8, box8, ncol = 4)
+
+hist1 <- ggplot(data=df, aes(x=opinions_excellent)) + geom_histogram(binwidth = 100) 
+box1 <- ggplot(data=df, aes(opinions_excellent)) + geom_boxplot() 
+hist2 <- ggplot(data=df, aes(x=opinions_good)) + geom_histogram(binwidth = 100) 
+box2 <- ggplot(data=df, aes(opinions_good)) + geom_boxplot() 
+hist3 <- ggplot(data=df, aes(x=opinions_normal)) + geom_histogram(binwidth = 50) 
+box3 <- ggplot(data=df, aes(opinions_normal)) + geom_boxplot() 
+hist4 <- ggplot(data=df, aes(x=opinions_bad)) + geom_histogram(binwidth = 50) 
+box4 <- ggplot(data=df, aes(opinions_bad)) + geom_boxplot() 
+hist5 <- ggplot(data=df, aes(x=opinions_awful)) + geom_histogram(binwidth = 50) 
+box5 <- ggplot(data=df, aes(opinions_awful)) + geom_boxplot() 
+hist6 <- ggplot(data=df, aes(x=num_qa)) + geom_histogram(binwidth = 50) 
+box6 <- ggplot(data=df, aes(num_qa)) + geom_boxplot() 
+hist7 <- ggplot(data=df, aes(x=nearby_restaurants)) + geom_histogram(binwidth = 100) 
+box7 <- ggplot(data=df, aes(nearby_restaurants)) + geom_boxplot() 
+hist8 <- ggplot(data=df, aes(x=nearby_attractions )) + geom_histogram(binwidth = 100) 
+box8 <- ggplot(data=df, aes(nearby_attractions )) + geom_boxplot() 
+grid.arrange(hist1, box1, hist2, box2, hist3, box3, hist4, box4, hist5, box5, hist6, box6,
+             hist7, box7, hist8, box8, ncol = 4)
+
+hist1 <- ggplot(data=df, aes(x=latitude)) + geom_histogram(binwidth = 0.05) 
+box1 <- ggplot(data=df, aes(latitude)) + geom_boxplot() 
+hist2 <- ggplot(data=df, aes(x=longitude)) + geom_histogram(binwidth = 0.05) 
+box2 <- ggplot(data=df, aes(longitude)) + geom_boxplot() 
+hist3 <- ggplot(data=df, aes(x=rooms)) + geom_histogram(binwidth = 20) 
+box3 <- ggplot(data=df, aes(rooms)) + geom_boxplot() 
+hist4 <- ggplot(data=df, aes(x=tripadvisor_clasification)) + geom_histogram(binwidth = 10) 
+box4 <- ggplot(data=df, aes(tripadvisor_clasification)) + geom_boxplot() 
+hist5 <- ggplot(data=df, aes(x=prat_distance)) + geom_histogram(binwidth = 5) 
+box5 <- ggplot(data=df, aes(prat_distance)) + geom_boxplot()
+grid.arrange(hist1, box1, hist2, box2, hist3, box3, hist4, box4, hist5, box5, ncol = 4)
+
+```
+
+
+# Análisis de los datos
+
+# Representación de los resultados a partir de tablas y gráficas
+
+# Conclusiones
+
+
