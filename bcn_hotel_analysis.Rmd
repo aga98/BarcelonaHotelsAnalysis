@@ -82,13 +82,9 @@ Con la elección de este dataset, se pretende dar respuesta a diferentes pregunt
 
 - ¿Hay relación entre las estrellas de un hotel y la valoración de los usuarios?
 - ¿Hay diferencias en los precios de hoteles entre diferentes barrios de Barcelona?
-- ¿Es cierto que los hoteles más caros ofrecen una mejor limpieza de sus instalaciones? ¿Y un mejor servicio?
-- ¿Son más caros aquellos hoteles que admiten mascotas de los que no lo hacen? ¿Y los que tienen gimnasio?
-- ¿Se hablan más idiomas en los hoteles de un barrio respecto a los demás? ¿Y en los más caros respecto a los demás?
-- ¿La relación calidad precio es mayor en hoteles más baratos que en los caros?
+- ¿Es cierto que los hoteles más caros ofrecen una mejor limpieza de sus instalaciones?
+- ¿Son más caros aquellos hoteles que tienen ciertos servicios como aire acondicionado respecto los que no tienen?
 - ¿Hay relación entre la puntuación que los usuarios atribuyen a la ubicación del hotel respecto al número de restaurantes y atracciones cercanas?
-- ¿Los hoteles con menos estrellas suelen tener más opiniones de usuarios que los de más estrellas?
-- ¿Hay más habitaciones disponibles en algún barrio?
 
 A parte, se intentará generar algún modelo de clasificación para predecir los rangos de precios de los hoteles según el resto de características.
 
@@ -106,7 +102,9 @@ df <- read.csv("tripadvisor_barcelona_hotels.csv", encoding = "UTF-8")
 str(df, strict.width="wrap")
 ```
 
-En cuanto a la selección de datos, vamos a quedarnos con aquellos que tengan un rango de precio informado, ya que como vamos a explicar será una de las variable objetivo del análisis. En cuanto a los diferentes atributos, vamos a empezar eliminando las columnas `name` y `timestamp`, ya que la primera contiene el nombre del hotel, el cual no es necesario para los análisis y el segundo la fecha de la captura de los datos, que tampoco nos aporta información relativa al hotel.
+En cuanto a la selección de datos, vamos a quedarnos con aquellos que tengan un rango de precio informado, ya que como vamos a explicar será una de las variable objetivo del análisis. Además, como veremos más tarde, vamos a quedarnos solo con los hoteles que están situados en los distritos más turísticos (aquellos con más hoteles). Concretamente, nos quedaremos con los distritos de "Ciutat Vella", "Eixample", "Sant Martí", "Gràcia" y "Sarrià". Sin embargo, esta selección no se puede realizar hasta más tarde, ya que necesitamos aplicar un preprocesado a la variable `zone` para extraer el distrito.
+
+En cuanto a los diferentes atributos, vamos a empezar eliminando las columnas `name` y `timestamp`, ya que la primera contiene el nombre del hotel, el cual no es necesario para los análisis y el segundo la fecha de la captura de los datos, que tampoco nos aporta información relativa al hotel.
 
 Observamos también dos columnas relativas al precio. `price` contiene el precio por noche en el momento de la extracción del dato proporcionado por terceros (Booking,
 Expedia...). `price_range` es una estimación más general del precio del hotel y es proporcionado por la propia Tripadvisor. Además, la variable `price`, a parte de tener un carácter temporal,  tiene muchos valores nulos, como veremos más tarde. Por este motivo, eliminaremos la variable `price` y obtendremos los precios directamente de la variable `price_range`.
@@ -229,6 +227,14 @@ summary(df$district)
 
 De esta forma, tenemos datos más manejables y hemos conseguido reducir mucho el número de posibles valores para esta variable.
 
+Como hemos menciando antes, vamos a quedarnos con los distritos que tengan más hoteles, ya que son los que potencialmente serán mas interesantes para los turistas. Por tanto, vamos a quedarnos con los hoteles que estén en  “Ciutat Vella”, “Eixample”, “Sant Martí”, “Gràcia” y “Sarrià”.
+
+```{r}
+df <- df[df$district %in% c("Ciutat Vella", "Eixample", "Sant Martí", "Gràcia", "Sarrià", 
+                            "Sants-Montjuïc"),]
+```
+
+
 ## Elementos nulos
 
 A continuación, vamos a inspeccionar el dataset en busca de valores nulos.
@@ -240,8 +246,7 @@ colSums(is.na(df))
 Dependiendo de la variable, vamos a tratar los nulos de forma diferente.
 
 - Las que hacen referencia al número de opiniones las vamos a imputar con un 0, ya que si es nulo es que no se ha encontrado ninguna opinión.
-- Para la distancia al aeropuerto del Prat, latitud y longitud vamos a imputar los nulos con la mediana, ya que al estar en Barcelona es muy probable que estos valores sean similares al resto.
-- Para las atracciones y restaurantes cercanos vamos a imputar también con la mediana (solo 5 nulos).
+- De momento no vamos a imputar el resto de nulos. Será en el momento que necesitemos usar estas columnas cuando eliminaremos aquellas filas que tengan NA's, ya que debido a que en algunas columnas el porcentaje de nulos está cerca del 20%, es mejor eliminarlas para no desvirtuar las posibles conclusiones. Sin embargo, no las vamos a eliminar ahora, ya que pueden tener información importante para el análisis del resto de variables.
 
 
 ```{r}
@@ -251,22 +256,16 @@ opinion_vars <- c("opinions", "opinions_excellent", "opinions_good", "opinions_n
 for(var in opinion_vars){
   df[[var]][is.na(df[[var]])] <- 0
 }
-# prat_distance, latitude, longitude, nearby_restaurants,  nearby_attractions
-median_vars <- c("prat_distance", "latitude", "longitude", "nearby_restaurants", 
-                 "nearby_attractions")
-for(var in median_vars){
-  df[[var]][is.na(df[[var]])] <- median(df[[var]], na.rm = TRUE)
-}
 colSums(is.na(df))
 ```
 
-De momento no vamos a imputar el resto de nulos. Será en el momento que necesitemos usar estas columnas cuando eliminaremos aquellas filas que tengan NA's, ya que debido a que en algunas columnas el porcentaje de nulos está cerca del 20%, es mejor eliminarlas para no desvirtuar las posibles conclusiones. Sin embargo, no las vamos a eliminar ahora, ya que pueden tener información importante para el análisis del resto de variables.
+
 
 ## Valores extremos
 
 Vamos a inspeccionar las variables numéricas en busca de outliers. Nos ayudaremos de un histograma y de un boxplot de cada variable.
 
-```{r results='asis', warning=FALSE, echo=FALSE, fig.width=12, fig.height=15}
+```{r results='asis', warning=FALSE, echo=FALSE, fig.width=12, fig.height=13}
 hist1 <- ggplot(data=df, aes(x=stars)) + geom_histogram(binwidth = 1)
 box1 <- ggplot(data=df, aes(stars)) + geom_boxplot()
 hist2 <- ggplot(data=df, aes(x=score)) + geom_histogram(binwidth = 0.5)
@@ -318,141 +317,386 @@ hist4 <- ggplot(data=df, aes(x=tripadvisor_clasification)) + geom_histogram(binw
 box4 <- ggplot(data=df, aes(tripadvisor_clasification)) + geom_boxplot() 
 hist5 <- ggplot(data=df, aes(x=prat_distance)) + geom_histogram(binwidth = 5) 
 box5 <- ggplot(data=df, aes(prat_distance)) + geom_boxplot()
-grid.arrange(hist1, box1, hist2, box2, hist3, box3, hist4, box4, hist5, box5, ncol = 4)
+hist6 <- ggplot(data=df, aes(x=price_range)) + geom_histogram(binwidth = 100) 
+box6 <- ggplot(data=df, aes(price_range)) + geom_boxplot()
+grid.arrange(hist1, box1, hist2, box2, hist3, box3, hist4, box4, hist5, box5, hist6, box6, ncol = 4)
 
 ```
 
 
 Como observamos, si nos fijamos en los plots que hacer referencia a las variables de estrellas y puntuaciones en diferentes ámbitos observamos una media por encima de 4 sobre 5. Los únicos outliers que vemos son en puntuaciones por debajo de las 3 estrellas en general. Sin embargo, son valores perfectamente válidos, ya que están dentro del rango correcto de valores esperado (entre 1 y 5).
 
-En cuanto a las diferentes variables sobre número de opiniones, se observa una clara asimetría y bastantes outliers por la parte superior. Sin embargo, no parecen valores incorrectos, ya que son valores razonables que y no demasiado alejados del resto.
+En cuanto a las diferentes variables sobre número de opiniones, se observa una clara asimetría y bastantes outliers por la parte superior. Sin embargo, no parecen valores incorrectos, ya que son valores razonables que y no están demasiado alejados del resto. 
 
-En cambio, si observamos la cantidad de restaurantes y actividades cercanas, vemos claramente outliers. Si nos fijamos en `nearby_restaurants`, hay una observación por encima de 6000 (la media es 370) y algunas de atracciones por encima de 1000 (la media es 97). Buscando estos casos en web de Tripadvisor, hemos detectado que son hoteles en las afueras de Barcelona, y que en lugar de contabilizar estos números en un radio de 500 metros desde el hotel (como se hace en los demás), estas cifras hacen referencia a un radio de 10km. Por lo tanto, al estar alejados de Barcelona, vamos a inputar estos outliers con el valor 0.
+Luego, para las variables de atraciones y restaurantes cercanos, latitud y langitud, o no se observan outliers o los que se observan están muy cerca de los extremos, por lo que parecen valores perfectamente válidos.
 
-```{r}
-df$nearby_restaurants[df$nearby_restaurants > 5000] <- 0
-df$nearby_attractions[df$nearby_attractions > 1000] <- 0
-```
+También, en las variables `rooms` y `tripadvisor_classification`, vemos que los valores extremos parecen correctos y tienen sentido. Por ejemplo, en cuanto a esta última variable (la cual está sobre 100) vemos que la mayoría de hoteles tienen una puntuación muy alta y que todos están entre 50 y 100, valores que son correctos. Además, en la variable `prat_distance`, pese a haber outliers vemos que todos los valores están entre 10 y 17 kilómetros, distancias verosímiles para hoteles situados en los distritos mencionados de Barcelona.
 
-Si volvemos a enseñar los plots de estas variables, vemos que se han eliminado estos valores extremos.
-
-```{r echo=FALSE, fig.width=12, fig.height=6}
-hist1 <- ggplot(data=df, aes(x=nearby_restaurants)) + geom_histogram(binwidth = 100) 
-box1 <- ggplot(data=df, aes(nearby_restaurants)) + geom_boxplot() 
-hist2 <- ggplot(data=df, aes(x=nearby_attractions )) + geom_histogram(binwidth = 100) 
-box2 <- ggplot(data=df, aes(nearby_attractions )) + geom_boxplot() 
-grid.arrange(hist1, box1, hist2, box2, ncol = 4)
-```
-
-Seguidamente, observamos las variables que hacen referencia a la ubucación del hotel (longitud, latitud y distancia al aeropuerto del Prat). Vemos ciertos outliers en la latitud y longitud. Aquellas observaciones más extremas podrían ser también probablemente los hoteles que estén más lejos del aeropuerto del Prat. Mirando esta variable, observamos que hay hoteles a más de 30 kilómetros del aeropuerto. Sin embargo, estos hoteles los descartaremos, ya que al estar tan alejados de Barcelona no nos interesan. Se ha comprobado que el hotel más lejano se sitúa en Berga, ciudad que está a más de 100km de Barcelona y que obviamente no entra en el objetivo de este análisis. Por lo tanto, vamos a eliminar aquellos hoteles que estén a una distancia superior a 30km del Prat.
+Finalmente, en la variable `price_range`, vemos dos outliers claros, situados por encima de los 1250 euros. Los eliminaremos para que no afecten a las conclusiones de los análisis.
 
 ```{r}
-df <- df[df$prat_distance < 30,]
+df <- df[df$price_range < 1000,]
 ```
 
-Veamos cómo han quedado estas 3 variables mencionadas.
 
-```{r fig.width=12, echo=FALSE, fig.height=10}
-hist1 <- ggplot(data=df, aes(x=latitude)) + geom_histogram(binwidth = 0.05) 
-box1 <- ggplot(data=df, aes(latitude)) + geom_boxplot() 
-hist2 <- ggplot(data=df, aes(x=longitude )) + geom_histogram(binwidth = 0.05) 
-box2 <- ggplot(data=df, aes(longitude )) + geom_boxplot()
-hist3 <- ggplot(data=df, aes(x=prat_distance)) + geom_histogram(binwidth = 2) 
-box3 <- ggplot(data=df, aes(prat_distance)) + geom_boxplot() 
-grid.arrange(hist1, box1, hist2, box2, hist3, box3, ncol = 4)
-```
-
-Finalmente, en las variables `rooms` y `tripadvisor_classification`, vemos que los valores extremos parecen correctos y tienen sentido. Por ejemplo, en cuanto a esta última variable (la cual está sobre 100) vemos que la mayoría de hoteles tienen una puntuación muy alta y que todos están entre 50 y 100, valores que son correctos. Por lo tanto, en este punto ya tenemos el dataset preparado para su análisis.
+Por lo tanto, en este punto ya tenemos el dataset preparado para su análisis.
 
 
 # Análisis de los datos
 
-## Comparación de la limpieza entre hoteles baratos y de lujo
+## Comparación de la limpieza entre hoteles de diferente rango de precios
 
-En este primer análisis vamos a ver si la calificación de limpieza de un hotel es superior en hoteles de lujo respecto a los más baratos.
-Vemos primero cuantos hoteles hay de cada tipo.
+En este primer análisis vamos a ver si la calificación de limpieza de un hotel es superior a medida que se aumenta el rango de precios. Lo que se espera es que a cuanto más caro sea el hotel, mejor sea su limpieza, especialmente si estamos dispuestos a pagar una cantidad alta por el alojamiento, donde se espera una limpieza muy buena. Por tanto, se espera que los hoteles de precio medio tengan mejor puntuación en limpieza que los baratos, los caros mejor que los medios y los de lujo superior que en los caros.
+
+Veamos primero cuantos hoteles hay de cada tipo.
 
 ```{r}
 table(df$price_range_disc)
 cleaning_cheap <- df$score_cleaning[df$price_range_disc == "Barato"]
+cleaning_medium <- df$score_cleaning[df$price_range_disc == "Medio"]
+cleaning_expensive <- df$score_cleaning[df$price_range_disc == "Caro"]
 cleaning_luxury <- df$score_cleaning[df$price_range_disc == "Lujo"]
 ```
 
-Vemos que hay una cantidad parecida de hoteles baratos y de lujo. El primer paso será ver si la variable `price_range_disc` sigue o no una distribución normal. Para ello, vamos a visualizar los QQ Plots de cada grupo y  hacer el Test de Shapiro-Wilk.
+El primer paso será ver si la variable `price_range_disc` sigue o no una distribución normal. Para ello, vamos a visualizar los QQ Plots de cada grupo y hacer el Test de Shapiro-Wilk.
 
-```{r, echo=FALSE, results="hold"}
+```{r, echo=FALSE, results="hold", fig.width=12, fig.height=4.5}
 par(mfrow=c(1,2))
 qqnorm(cleaning_cheap)
 qqline(cleaning_cheap)
+qqnorm(cleaning_medium)
+qqline(cleaning_medium)
+```
+
+```{r, echo=FALSE, results="hold", fig.width=12, fig.height=4.5}
+par(mfrow=c(1,2))
+qqnorm(cleaning_expensive)
+qqline(cleaning_expensive)
 qqnorm(cleaning_luxury)
 qqline(cleaning_luxury)
 shapiro.test(x = cleaning_cheap)
+shapiro.test(x = cleaning_medium)
+shapiro.test(x = cleaning_expensive)
 shapiro.test(x = cleaning_luxury)
 ```
 
+Ya vemos en los plots (`cleaning_cheap`, `cleaning_medium`, `cleaning_expensive` y `cleaning_luxury`, respectivamente) que no se cumple la normalidad en los datos. La misma conclusión obtenemos con el Shapiro test, en los cuales obtenemos *p-values* muy inferiores a 0.05, con lo que se rechaza la hipótesis nula y se concluye que no siguen una distribución normal.
 
-Ya vemos en los plots (en la izquierda `cleaning_cheap` y derecha `cleaning_luxury`) que no se cumple la normalidad en los datos. La misma conclusión obtenemos con el Shapiro test, en los cuales obtenemos *p-values* muy inferiores a 0.05, con lo que se rechaza la hipótesis nula y se concluye que no siguen una distribución normal.
+Comprobaremos también si las varianzas de los distintos grupos son iguales o no. Para ello aplicaremos el F-Test.
 
-También debemos comprobar si las varianzas de las dos muesras son iguales o no. Aplicamos el F Test para compararlas.
-
-```{r}
-var.test(cleaning_cheap, cleaning_luxury)
+```{r results="hold"}
+var.test(cleaning_cheap, cleaning_medium)
+var.test(cleaning_medium, cleaning_expensive)
+var.test(cleaning_expensive, cleaning_luxury)
 ```
 
-Observamos que el p-value es 0.0593, el cual es mayor que el nivel de significancia 0.05, por lo que no podemos rechazar la hipótesis nula y consecuentemente se considera que las varianzas son iguales.
+Vemos que las varianzas entre las puntuaciones de limpieza de hoteles baratos y medios son diferentes, mientras que entre medios y caros y caros y de lujo son iguales, según los *p-values* obtenidos.
 
+Por tanto, para comparar las diferentes muestas, debemos recurrir a pruebas no paramétricas. Concretamente, aplicaremos el test de suma de rangos de Wilcoxon con las siguientes hipótesis.
 
+$H_0: \mu_{cheap} - \mu_{medium} = 0 \\ H_1: \mu_{cheap} - \mu_{medium} < 0$
 
-Por tanto, para comparar ambas muestas, debemos recurrir a pruebas no paramétricas. Concretamente, aplicaremos el test de suma de rangos de Wilcoxon con las siguientes hipótesis.
+$H_0: \mu_{medium} - \mu_{expensive} = 0 \\ H_1: \mu_{medium} - \mu_{expensive} < 0$ 
 
-$$H_0: \mu_{cheap} - \mu_{luxury} = 0$$ 
-$$H_1: \mu_{cheap} - \mu_{luxury} < 0$$
+$H_0: \mu_{expensive} - \mu_{luxury} = 0 \\ H_1: \mu_{expensive} - \mu_{luxury} < 0$
 
 ```{r}
-wilcox.test(cleaning_cheap, cleaning_luxury , alternative = "less")
+wilcox.test(cleaning_cheap, cleaning_medium, alternative = "less")
+wilcox.test(cleaning_medium, cleaning_expensive, alternative = "less")
+wilcox.test(cleaning_expensive, cleaning_luxury, alternative = "less")
 ```
 
-Obtenemos un *p-value* de 8.495e-06, por lo que rechazamos la hipótesis nula y adoptamos la alternativa, de modo que se concluye que los hoteles de lujo tienen mejor limpieza que los más baratos.
+Obtenemos *p-value* menores que 0.05 para las dos primeras pruebas, por lo que rechazamos la hipótesis nula y conlcuimos que los hoteles de precio medio tienen mejor limpieza que los baratos y que los caros tienen mejor limpieza que los medios. Sin embargo, no podemos rechazar la hipótesis nula para el último contraste, por lo que los hoteles de lujo no tienen mejor limpieza que los caros. Es algo llamativo, ya que en principio deberían tener la mejor limpieza posible.
+
+Si visualizamos la tabla con las medias de puntuación de limpieza y los boxplots para los diferentes rangos de precios, observamos las mismas conclusiones extraidas de las pruebas anteriores.
+
+
+
+```{r warning=FALSE, fig.width=12, fig.height=5, echo=FALSE}
+ggplot(df, aes(x = price_range_disc, y = score_cleaning)) + geom_boxplot()
+means <- data.frame(Barato = mean(cleaning_cheap, na.rm = T),  Medio = mean(cleaning_medium, na.rm = T),
+                    Caro = mean(cleaning_expensive, na.rm = T), Lujo = mean(cleaning_luxury, na.rm = T))
+knitr::kable(means)
+```
 
 ## Comparación de precios entre hoteles de distintos distritos
 
-En este apartado vamos a comprobar si hay diferencia de precios entre diferentes barrios de Barcelona. Como en muchas zonas no hay demasiados hoteles, vamos a comparar solo algunos distritos que aglomeren más hoteles.
+En este apartado vamos a comprobar si hay diferencia de precios entre diferentes barrios de Barcelona. Como en muchas zonas no hay demasiados hoteles, vamos a comparar solo algunos distritos que aglomeren más hoteles. Para tener una idea a priori de cada barrio, vamos a visualizar los boxplots del precio en cada distrito.
+
+```{r echo=FALSE}
+ggplot(df, aes(x = district, y = price_range, fill = district)) + geom_boxplot() + theme(legend.position = "none")
+```
+
+Ya observamos que visualmente no se observan diferencias importantes entre los diferentes distritos. Solo vemos que el distrito de Sant Martí parece ser ligeramente más caro que el resto. Para salir de dudas, vamos a realizar los contrastes con todas las combinaciones de distritos, para ver si hay realmente diferencias o no entre los precios de los hoteles entre los diferentes distritos.
 
 Para ver qué test aplicamos, debemos comprobar antes si el precio sigue una distribución normal.
 
-```{r results="hold"}
+```{r echo=FALSE, fig.height=4}
 qqnorm(df$price_range)
 qqline(df$price_range)
+```
+```{r}
 shapiro.test(df$price_range)
 ```
-A partir del plot y el Shapiro-Wilk vemos que no se cumple la normalidad en los datos. Antes de aplicar como antes el test de Wilcoxon, debemos asegurarnos de que las varianzas sean iguales.
+
+A partir del plot y el Shapiro-Wilk vemos que no se cumple la normalidad en los datos. Vamos a comprobar también si las varianzas son iguales entre los distritos.
 
 ```{r results="hold"}
-price_sants <- df$price_range[df$district == "Sants-Montjuïc"]
-price_ciutat_vella <- df$price_range[df$district == "Ciutat Vella"]
-price_eixample <- df$price_range[df$district == "Eixample"]
-price_sant_marti <- df$price_range[df$district == "Sant Martí"]
-var.test(price_sants, price_eixample)
-var.test(price_sant_marti, price_ciutat_vella)
+districts <- c("Sants-Montjuïc", "Ciutat Vella", "Eixample", "Sant Martí", "Gràcia", "Sarrià")
+pairs <- combn(districts, 2)
+for(i in 1:dim(pairs)[2]){
+  dist1 <- pairs[1, i]; dist2 <- pairs[2, i]
+  price1 <- df$price_range[df$district == dist1]
+  price2 <- df$price_range[df$district == dist2]
+  p <- var.test(price1, price2)$p.value
+  cat(paste(dist1, "-", dist2, ":", p, "____ <0.05? ", p < 0.05, "\n"))
+}
 ```
 
-Una vez comprobado que las varianzas de precios en estos distritos son iguales, vamos a realizar dos pruebas de contrastes de hipótesis. En la primera vamos a ver si los precios en el Eixample son mayores que en Sants y en el segundo vamos a comprobar si los precios en Sant Martí son diferentes o no de los de Ciutat Vella.
+Observamos que en todos los casos menos para los pares Sants-Montjuïc - Eixample y Ciutat Vella - Sant Martí las varianzas son diferentes. Lo que haremos será realizar contrastes de hipótesis en los que vamos a comprobar si los precios son iguales o no entre cada par de distritos (test bilateral). Debido a las condiciones de la muestra lo que haremos será aplicar de nuevo el test de suma de rangos de Wilcoxon con las siguientes hipótesis. Vamos a imprimir cada pareja de distritos con el *p-value* obtenido y un mensaje que diga si el valor es menor que 0.05 para poder rechazar la hipótesis nula.
 
-- $$H_0: \mu_{eixample} - \mu_{sants} = 0; H_1: \mu_{eixample} - \mu_{sants} > 0$$
-- $$H_0: \mu_{santmarti} - \mu_{ciutatvella} = 0; H_1: \mu_{santmarti} - \mu_{ciutatvella} \neq 0$$
+$H_0: \mu_{dist1} - \mu_{dist2} = 0 \\ H_1: \mu_{dist1} - \mu_{dist2} \neq 0$
+
 
 ```{r results="hold"}
-wilcox.test(price_eixample, price_sants, alternative = "greater")
-wilcox.test(price_sant_marti, price_ciutat_vella, alternative = "two.sided")
+for(i in 1:dim(pairs)[2]){
+  dist1 <- pairs[1, i]; dist2 <- pairs[2, i]
+  price1 <- df$price_range[df$district == dist1]
+  price2 <- df$price_range[df$district == dist2]
+  p <- wilcox.test(price1, price2, alternative = "two.sided")$p.value
+  cat(paste(dist1, "-", dist2, ":", p, "____ <0.05? ", p < 0.05, "\n"))
+}
 ```
 
-Obtenemos *p-values* inferiores al nivel de signifancia 0.05 en ambos casos, por lo que rechazamos la hipótesis nula. Por lo tanto, podemos concluir que los precios de los hoteles del Eixample son más caros que los de Sants y que los del distrito de Sant Martí son diferentes a los de Ciutat Vella.
+Resumimos en la siguiente tabla los resultados según si hipótesis que adoptamos según los *p-values*. Se mostrará el símbolo $=$ en caso de igualdad de precios entre distritosy $\neq$ en caso de que no lo sean (hipótesis alternativa).
+
+|districts         |Sants-Montjuïc|Ciutat Vella|Eixample|Sant Martí|Gràcia|Sarrià |
+-------------------|-------------|-------|-------|---------|--------------|-------|
+|  Sants-Montjuïc  | *          |    = |   $\neq$  |    $\neq$   |      =      |  =   |
+|  Ciutat Vella    |             |      *|   $\neq$  |  $\neq$     |     =       | =    |
+|  Eixample        |             |       |    * |   =    |     =       |  $\neq$   |
+| Sant Martí       |             |       |       |      *  |    =        |  $\neq$   |
+|  Gràcia          |             |       |       |         |            * |  $\neq$   |
+|  Sarrià          |             |       |       |         |              |   *   |
+
+Ahora, para ver qué pasa en los casos donde los precios son diferentes (ver si es mayor o menor), vamos a realizar el mismo experimento pero cambiando la hipótesis alternativa por menor y mayor.
+
+```{r results="hold", echo=FALSE}
+cat("Alternative: Greater\n")
+for(i in 1:dim(pairs)[2]){
+  dist1 <- pairs[1, i]; dist2 <- pairs[2, i]
+  price1 <- df$price_range[df$district == dist1]
+  price2 <- df$price_range[df$district == dist2]
+  p <- wilcox.test(price1, price2, alternative = "greater")$p.value
+  cat(paste(dist1, "-", dist2, ":", p, "____ <0.05? ", p < 0.05, "\n"))
+}
+cat("\n\nAlternative: Less\n")
+for(i in 1:dim(pairs)[2]){
+  dist1 <- pairs[1, i]; dist2 <- pairs[2, i]
+  price1 <- df$price_range[df$district == dist1]
+  price2 <- df$price_range[df$district == dist2]
+  p <- wilcox.test(price1, price2, alternative = "less")$p.value
+  cat(paste(dist1, "-", dist2, ":", p, "____ <0.05? ", p < 0.05, "\n"))
+}
+```
+
+Vamos a actualizar la matriz anterior sustituyendo los signos "$\neq$" por los que se deducen a partir de esta última prueba.
+
+|districts         |Sants-Montjuïc|Ciutat Vella|Eixample|Sant Martí|Gràcia|Sarrià |
+-------------------|-------------|-------|-------|---------|--------------|-------|
+|  Sants-Montjuïc  | *           |    = |   <  |    <   |      =      |  =   |
+|  Ciutat Vella    |             |      *|   <  |  <     |     =       | =    |
+|  Eixample        |             |       |    *  |   =    |     =       |  >   |
+| Sant Martí       |             |       |       |      *  |    =        |  >   |
+|  Gràcia          |             |       |       |         |            * |  >   |
+|  Sarrià          |             |       |       |         |              |   *   |
+
+Como resumen de la tabla, vemos que los distritos que tienen los hoteles más caros son Eixample, Sant Martí y Gràcia, mientras que los más baratos son Sants-Montjuïc, Ciutat Vella y Sarrià.
+
+## ¿Hay relación entre las estrellas de un hotel y la valoración de los usuarios?
+
+Queremos ver si es cierto que cuantas más estrellas tenga un hotel, más puntuación le darán los usuarios. Para realizar este análisis, simplemente debemos calcular la correlación entre ambas variables. Nos ayudaremos también de un boxplot para analizar las tendencias.
+
+```{r warning=FALSE}
+cor(df$stars, df$score, use="complete.obs")
+ggplot(df, aes(x = stars, y = score, group = stars)) + geom_boxplot()
+```
+
+Hemos obtenido una correlación de 0.11. Este valor indica que hay correlación positiva, aunque bastante débil. Algo similar se observa en el boxplot. A medida que aumentan las estrellas, se aprecia un leve crecimiento en el score, aunque no es demasiado claro como para afirmarlo contundentmente. Esto significa, que hay poca relación entre el aumento de estrellas del hotel y el aumento de puntuación de los clientes.
+
+## ¿Hay relación entre la puntuación que los usuarios atribuyen a la ubicación del hotel respecto al número de restaurantes y atracciones cercanas?
+
+Muchas veces, cuando buscamos un hotel consideramos su ubicación un factor muy importante a la hora de escoger uno u otro. Muchas veces lo que se quiere es estar muy cerca de las principales atracciones de la ciudad o de restaurantes. Sin embargo, queremos comprobar si este hecho está reflejado en la puntuación que se le da a la ubicación del hotel. Para ello, vamos a ver si la puntuación que recibe la ubicación del hotel tiene relación con el número de restaurantes y atracciones situados en las inmediaciones del hotel.
+
+```{r warning=FALSE, message=FALSE}
+cor(df$score_location, df$nearby_restaurants, use="complete.obs")
+cor(df$score_location, df$nearby_attractions, use="complete.obs")
+gg1 <- ggplot(df, aes(x = score_location, y = nearby_restaurants)) + geom_point() + 
+  geom_smooth(method = "lm", se = FALSE)
+gg2 <- ggplot(df, aes(x = score_location, y = nearby_attractions)) + geom_point() + 
+  geom_smooth(method = "lm", se = FALSE)
+grid.arrange(gg1, gg2, ncol=2)
+```
+
+| Correlaciones | Num. Restaurantes | Num. Atracciones |
+|-|-----------------------|-----------------------|
+|Punt. Ubicación| 0.504 | 0.442 |
 
 
-# Representación de los resultados a partir de tablas y gráficas
+Obtenemos correlaciones positivas moderadas entre la puntuación que se le da a la ubicación y el número de restaurantes y atracciones cercanas al hotel. Lo mismo vemos claramente en los *scatter plot*, donde la recta de regresión lineal tiene claramente pendiente positiva. Por tanto, vemos que cuando una persona puntúa la ubicación del hotel, indirectamente nos da información valiosa sobre el número de restaurantes y atracciones situados cerca del hotel. 
+
+## ¿Son más caros aquellos hoteles que tienen aire acondicionado respecto los que no tienen?
+
+Muchas veces los hoteles que tienen ciertas instalaciones o servicios incluyen el uso de estos en el precio. Por tanto, vamos a ver si los hoteles que disponen de aire acondicionado son más caros que los que no tienen. Para hacer una comparación lo más ajustada posible, vamos a comparar los hoteles que estén en el Eixample y que tengan entre 3 y 4 estrellas. Realizaremos también el Shapiro test para ver si cumplen la normalidad y el F Test para ver si las varianzas son iguales.
+
+```{r results="hold"}
+price_no_ac <- df$price_range[(!is.na(df$stars)) & (df$stars <= 4) & 
+                              (df$district == "Eixample") & (df$stars >= 3) & 
+                              (df$has_ac == "False")]
+price_with_ac <- df$price_range[(!is.na(df$stars)) & (df$stars <= 4) & 
+                                (df$district == "Eixample") & (df$stars >= 3) & 
+                                (df$has_ac == "True")]
+shapiro.test(price_no_ac)
+shapiro.test(price_with_ac)
+var.test(price_no_ac, price_with_ac)
+```
+Según los resultados, vemos que las muestras no siguen una normal y además las varianzas son diferentes.
+
+Por tanto, volveremos a aplicar como antes el test de Wilkoxon con la hipótesis siguiente:
+
+$H_0: \mu_{ac} - \mu_{nac} = 0 \\ H_1: \mu_{ac} - \mu_{nac} > 0$
+
+```{r}
+wilcox.test(price_with_ac, price_no_ac, alternative = "greater")
+```
+
+Hemos obtenido un *p-value* muy alto (0.9629), por lo que no podemos rechazar la hipótesis nula. Por tanto, no podemos afirmar que los hoteles con aire acondicionado sean más caros que los que no tienen. Para ver si es porque el aire acondicionado ya está muy extendido y es relativamente barato, vamos a probar con si tienen piscina o no, ya que en principio es un servicio que tiene un coste elevado.
+
+```{r}
+price_no_sw <- df$price_range[(!is.na(df$stars)) & (df$stars <= 4) & 
+                              (df$district == "Eixample") & (df$stars >= 3) & 
+                              (df$has_swimming_pool == "False")]
+price_with_sw <- df$price_range[(!is.na(df$stars)) & (df$stars <= 4) & 
+                                (df$district == "Eixample") & (df$stars >= 3) & 
+                                (df$has_swimming_pool == "True")]
+wilcox.test(price_with_sw, price_no_sw, alternative = "greater")
+```
+
+Volvemos a no poder rechazar la hipótesis nula y por tanto se concluye que no son más caros los hoteles que tienen piscina. Es un resultado que no intuíamos, ya que se esperaba que los hoteles con piscina fueran más caros. Puede que el problema sea que no estamos comparando hoteles con otras características similares y que puedan ocultar el efecto de un servicio o instalación concreto del hotel, aunque se ha intentado minimizar este efecto seleccionando hoteles del mismo distirito y estrellas.
+
+
+## Predicción del precio de un hotel
+
+En este apartado vamos a intentar clasificar el precio de un hotel según sus características a partir de un modelo de clasificación. El objetivo inicial era predecir el precio numérico del hotel mediante un modelo de regresión, pero debido a que el precio lo hemos obtenido a través de un intervalo y por lo tanto no es demasiado preciso, vamos a convertir el problema en uno de clasificación, en el que en lugar de obtener un valor exacto vamos a clasificar los hoteles según el rango de precios "Barato", "Medio", "Caro" y "Lujo". Como método de clasificación, utilizaremos un árbol de decisión, ya que es un algoritmo sencillo y que en general tiene buenos resultados.
+
+
+Predecir el precio de un hotel o simplemente saber en qué rango de precios de los definidos estaría un hotel puede ser muy útil para diferentes usuarios. Por ejemplo, imaginemos un turista que desea un alojamiento con unas características determinadas y ha encontrado algunos navegando por la web. Sin embargo, no sabe si los precios disponbles se adecuan a las características y servicios de los que dispone el hotel. Por tanto, el turista, siendo capaz de predecir el precio del hotel según sus atributos, podrá comparar los precios predichos con los que se le muestran, pudiendo valorar si una oferta es buena o si no lo es.
+
+Otro caso podría ser el de una cadena que quiere abrir un hotel en algún punto de Barcelona con unas características concretas. Si predecimos el precio de este supuesto hotel, la cadena hotelera podrá determinar los precios a los que pondrá sus habitaciones, ya puede ser algo más caro que otros hoteles con características similares o bien tener un precio más reducido, para así poder competir con los demás hoteles. Por lo tanto, ya vemos que poder predecir el precio puede ser útil para diversos usuarios.
+
+Para consturir el modelo, debemos seleccionar las variables independientes que nos ayudarán a predecir el precio. Para ello, vamos a calcular primero las correlaciones entre las diferentes variables.
+
+```{r warning=F, message=F}
+library(corrplot)
+not_num_vars <- c(catergorical_vars, "district", "zone", "price_range_disc")
+corrs <- cor(df[, -which(names(df) %in% not_num_vars)], use="pairwise.complete.obs")
+corrplot(corrs)
+```
+
+Observamos que no hay ninguna variable altamente correlacionada con el precio, por lo que vamos a construir diferentes modelos con variables distintas tanto numéricas como categóricas, de modo que el mejor modelo será aquel que tenga una precisión mayor. Para ello, vamos a dividir el dataset en dos trozos, uno para entrenar el modelo (training set) y el otro para el test (test set) con una proporción de 70/30.
+
+```{r}
+set.seed(12)
+df_rand <- df[sample(nrow(df)),]
+X <- df_rand[, names(df_rand) != "price_range_disc"]
+y <- df_rand[, "price_range_disc"]
+
+indexes = sample(1:nrow(df), size=floor(0.7*nrow(df)))
+trainX<-X[indexes,]
+trainy<-y[indexes]
+testX<-X[-indexes,]
+testy<-y[-indexes]
+
+m1 <- C50::C5.0(trainX[,c("stars", "nearby_restaurants")], trainy)
+predicted_model <- predict(m1, testX, type="class")
+ac1 <- 100*sum(predicted_model == testy) / length(predicted_model)
+
+m2 <- C50::C5.0(trainX[,c("stars", "nearby_restaurants", "nearby_attractions")], 
+                trainy)
+predicted_model <- predict(m2, testX, type="class")
+ac2 <- 100*sum(predicted_model == testy) / length(predicted_model)
+
+m3 <- C50::C5.0(trainX[,c("stars", "nearby_restaurants", "nearby_attractions", 
+                          "prat_distance", "district")], trainy)
+predicted_model <- predict(m3, testX, type="class")
+ac3 <- 100*sum(predicted_model == testy) / length(predicted_model)
+
+m4 <- C50::C5.0(trainX[,c("stars", "nearby_restaurants", "nearby_attractions", 
+                          "prat_distance", "district", "admits_pets")], trainy)
+predicted_model <- predict(m4, testX, type="class")
+ac4 <- 100*sum(predicted_model == testy) / length(predicted_model)
+
+m5 <- C50::C5.0(trainX[,c("stars", "nearby_restaurants", "latitude", "longitude",
+                          "prat_distance", "district", "admits_pets", 
+                          "has_strongbox")], trainy)
+predicted_model <- predict(m5, testX, type="class")
+ac5 <- 100*sum(predicted_model == testy) / length(predicted_model)
+
+m6 <- C50::C5.0(trainX[,c("stars", "nearby_restaurants", "nearby_attractions", 
+                          "latitude", "longitude", "has_swimming_pool", "has_bar", 
+                          "has_restaurant", "has_breakfast", "has_gym", 
+                          "has_reception_24h", "has_ac", "has_strongbox", 
+                          "admits_pets", "rooms", "suites", "sea_views_rooms", 
+                          "non_smoking_rooms", "landmarks_views_rooms", 
+                          "city_views_rooms", "family_rooms", "prat_distance", 
+                          "district")], trainy)
+predicted_model <- predict(m6, testX, type="class")
+ac6 <- 100*sum(predicted_model == testy) / length(predicted_model)
+
+res <- data.frame(Modelo1 = ac1, Modelo2 = ac2, Modelo3 = ac3, 
+                  Modelo4 = ac4, Modelo5 = ac5, Modelo6 = ac6)
+knitr::kable(res)
+```
+
+En la tabla anterior, vemos los resultados de las *accuracies* de cada uno de los árboles. Vemos que el modelo con el valor más alto es el modelo 6, el cual es el modelo que tiene más variables. No obstante, probando otras semillas, no siempre este modelo ha obtenido ha sido el mejor. Sin embargo, el *accuracy* de este modelo 6 ha sido del `r round(ac6, 2)`%, aunque en otras pruebas con semillas diferentes este porcentaje ha estado entre 55 y 65%. Veamos la matriz de confusión del mejor modelo.
+
+```{r echo=F}
+predicted_model <- predict(m5, testX, type="class")
+knitr::kable(table(testy,Predicted=predicted_model))
+```
+
+Vemos que la categoría que más acierta es la de rango medio, mientras que de hoteles baratos solo clasifica tres correctamente de un total de 20. De caros clasifica bien algunos, aunque la gran mayoría los ha clasificado como "Medio". Los de lujo vemos que no los consigue clasificar, ya que los clasifica todos como medios o caros.
+
+En resumen, es un resultado aceptable pero tampoco demasiado bueno, ya que el porcentaje de hoteles clasificados correctamente no es excesivamente alto y muchos rangos de precios no los clasifica correctamente.
+La razón de este resultado es que no se están contemplando variables importantes que puedan ayudar a diferenciar los hoteles, como por ejemplo la cadena de hoteles o la calidad de otros servicios e instalaciones que no se han recogido en el dataset por motivos de dificultad del proceso de extracción o bien porque directamente no aparece la información. También podría ser problema de la calidad del dato, ya que en muchas ocasiones los rangos de precios de los que obtenemos el dato son muy amplios y pueden que no reflejen correctamente la realidad.
+
+De todas formas, con los datos que se tiene se ha conseguido clasificar correctamente más de la mitad de los hoteles, por lo que está bastante bien para un dataset el cual se ha construido desde cero por nuestra parte sin estar preparado para obtener resultados muy precisos en tareas de clasificación.
+
+
 
 # Conclusiones
 
+En la primera parte de la práctica se ha realizado un preproceso de los datos, el cual ha consistido en seleccionar los datos a analizar, limpiarlos y detectar valores nulos y extremos. La parte de limpieza ha implicado diversas tareas de formato, transformación y discretización de datos, con la cual hemos generado la variable que informa del rango de precios y que hemos intentado predecir posteriormente.
+
+También, se han detectado algunos valores nulos. En algunas columnas referentes a número de opiniones de usuarios, estas se han inputado como 0, ya que es el significado real de los valores nulos en este tipo de variables. Para el resto de variables, hemos visto porcentajes bastante elevados de valores nulos (cerca del 20%), por lo que hemos preferido no inputar estos valores con las técnicas más habituales, como la mediana, para evitar así desvirtuar las conclusiones de los análisis. Lo que se ha hecho finalmente ha sido ignorar los registros con valores nulos en el momento que se han necesitado analizar ciertas variables, intentando obtener así conclusiones con observaciones completas.
+
+Posteriormente, hemos analizado todas las variables en busca de valores extremos mediante histogramas y boxplots. Después de inspeccionar estos valores, solo hemos encontrado dos valores con alta probabilidad de ser outliers en la variable `price_range`, los cuales hemos eliminado para evitar que impacten en los resultados.
+
+Ya en la parte de análisis, hemos respondido algunas preguntas sobre los hoteles. En primer lugar, se ha querido comprobar si es cierto que a cuanto más caro es un hotel, mejor es su limpieza. Hemos visto que que los hoteles de precio medio tienen mejor limpieza que los baratos y que los caros tienen mejor limpieza que los medios, pero no es cierto que los de lujo tengan mejor limpieza que los caros, hecho que no esperábamos antes de realizar el análisis.
+
+Seguidamente, hemos querido comprobar las diferencias de precios de hoteles entre los diferentes distritos de Barcelona. Los tests realizados nos han llevado a la conclusion de que los distritos que tienen los hoteles más caros son Eixample, Sant Martí y Gràcia, mientras que los más baratos son Sants-Montjuïc, Ciutat Vella y Sarrià. Sin embargo, mirando el boxplot con la comparación entre barrios, estas diferencias parecen ser bastante pequeñas.
+
+Además, hemos querido buscar correlaciones entre algunas variables. Primero, hemos querido validar si es cierto que cuantas más estrellas tenga un hotel, más satisfecho está el usuario (valoracion alta). El resultado ha sido una correlación bastante baja (0.11), con lo que la relacion entre ambas variables es bastante debil, significando que un hotel con muchas estrellas no tiene porqué tener valoraciones más altas que uno con menos estrellas. 
+
+Otra relación que hemos querido ver es si el número de hoteles y atracciones cercanas al hotel es motivo de tener alta puntuación de ubicación. Se ha obtenido una correlación moderada con ambas variables, concluyendo que existe relación entre el número dee atracciones y restaurantes en las inmediaciones del hotel y la puntuación obtenida por parte de los usuarios en cuanto a su ubicación.
+
+Finalmente, se ha querido ver si existe diferencias de precios entre hoteles que disponen de algun servicio o instalación concreta respecto a otros similares que no la tengan. Para tener hoteles similares, se han utilizado los situados en el barrio de l'Eixample y que tuvieran entre 3 y 4 estrellas. Sin embargo, después de haber probado con tener o no aire acondicionado y luego piscina, hemos visto que no había diferencia en el precio entre los grupos que tenían y los que no tenian estos servicios, por lo que es probable que las diferencias de precios estén causadas por otros factores que no estamos teniendo en cuenta, como la cadena del hotel o la propia calidad de los servicios.
+
+Por último, hemos intentado construir un modelo de clasificación de los hoteles según su rango de precios (Barato, Medio, Caro, Lujo) mediante árboles de decisión probando con distintas variables. Se ha hecho una separación de los datos en dos conjuntos: *training set* para el entrenamiento y *test set* para la prueba del modelo en datos desconocidos. Con el mejor modelo obtenido, se ha obtenido un `r round(ac6, 2)`% de *accuracy*. Es un resultado aceptable, aunque hemos visto que tiene bastantes problemas para clasificar correctamente los hoteles que no son de precio medio. Sin embargo, estamos satisfechos con el resultado obtenido, ya que con estos datos desconocidos previamente y sin saber si realmente obtendríamos algún modelo que funcionase más o menos bien, hemos conseguido predecir correctamente mas de la mitad de las observaciones que el modelo no había visto anteriormente.
+
+Sin embargo, para resolver el problema descrito en el inicio y poder tener una herramienta totalmente últil y que funcione adecuadamente, se necesitaría un esfuerzo extra para encontrar nuevas variables que nos ayuden a predecir mejor el precio de un hotel y probar otros modelos de clasificación que funcionen mejor con este problema, aunque estas tareas podrían ser perfectamente un proyecto serio para una empresa, debido a los recursos necesarios para conseguir una precisión óptima del modelo.
+
+# Contribuciones
 
 | Contribuciones               |      Firma    |
 |------------------------------|:-------------:|
@@ -461,3 +705,6 @@ Obtenemos *p-values* inferiores al nivel de signifancia 0.05 en ambos casos, por
 | Desarrollo código            | Alberto Giménez |
 
 
+```{r echo=FALSE}
+write.csv(df, "tripadvisor_barcelona_hotels_final.csv", row.names = FALSE)
+```

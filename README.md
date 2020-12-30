@@ -16,5 +16,6 @@ alrededores, los cuales fueron obtenidos mediante web scraping a fecha de 2 de n
 
 ## Ficheros
 - `tripadvisor_barcelona_hotels.csv`: Dataset de hoteles de Barcelona utilizado para el análisis.
+- `tripadvisor_barcelona_hotels_final.csv`: Dataset final resultado del preprocesado del conjunto original y utilizado para la realización de los análisis.
 - `bcn_hotel_analysis.Rmd`: RMarkdown con el código para el análisis y documentación del proyecto.
 - `bcn_hotel_analysis.pdf`: Documento con las respuestas, resultados de análisis y código generado a partir del fichero anterior.
