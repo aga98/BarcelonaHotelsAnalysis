@@ -442,7 +442,8 @@ shapiro.test(df$price_range)
 A partir del plot y el Shapiro-Wilk vemos que no se cumple la normalidad en los datos. Vamos a comprobar también si las varianzas son iguales entre los distritos.
 
 ```{r results="hold"}
-districts <- c("Sants-Montjuïc", "Ciutat Vella", "Eixample", "Sant Martí", "Gràcia", "Sarrià")
+districts <- c("Sants-Montjuïc", "Ciutat Vella", "Eixample", "Sant Martí", "Gràcia", 
+               "Sarrià")
 pairs <- combn(districts, 2)
 for(i in 1:dim(pairs)[2]){
   dist1 <- pairs[1, i]; dist2 <- pairs[2, i]
@@ -590,7 +591,7 @@ Volvemos a no poder rechazar la hipótesis nula y por tanto se concluye que no s
 En este apartado vamos a intentar clasificar el precio de un hotel según sus características a partir de un modelo de clasificación. El objetivo inicial era predecir el precio numérico del hotel mediante un modelo de regresión, pero debido a que el precio lo hemos obtenido a través de un intervalo y por lo tanto no es demasiado preciso, vamos a convertir el problema en uno de clasificación, en el que en lugar de obtener un valor exacto vamos a clasificar los hoteles según el rango de precios "Barato", "Medio", "Caro" y "Lujo". Como método de clasificación, utilizaremos un árbol de decisión, ya que es un algoritmo sencillo y que en general tiene buenos resultados.
 
 
-Predecir el precio de un hotel o simplemente saber en qué rango de precios de los definidos estaría un hotel puede ser muy útil para diferentes usuarios. Por ejemplo, imaginemos un turista que desea un alojamiento con unas características determinadas y ha encontrado algunos navegando por la web. Sin embargo, no sabe si los precios disponbles se adecuan a las características y servicios de los que dispone el hotel. Por tanto, el turista, siendo capaz de predecir el precio del hotel según sus atributos, podrá comparar los precios predichos con los que se le muestran, pudiendo valorar si una oferta es buena o si no lo es.
+Predecir el precio de un hotel o simplemente saber en qué rango de precios de los definidos estaría un hotel puede ser muy útil para diferentes usuarios. Por ejemplo, imaginemos un turista que desea un alojamiento con unas características determinadas y ha encontrado algunos navegando por la web. Sin embargo, no sabe si los precios disponibles se adecuan a las características y servicios de los que dispone el hotel. Por tanto, el turista, siendo capaz de predecir el precio del hotel según sus atributos, podrá comparar los precios predichos con los que se le muestran, pudiendo valorar si una oferta es buena o si no lo es.
 
 Otro caso podría ser el de una cadena que quiere abrir un hotel en algún punto de Barcelona con unas características concretas. Si predecimos el precio de este supuesto hotel, la cadena hotelera podrá determinar los precios a los que pondrá sus habitaciones, ya puede ser algo más caro que otros hoteles con características similares o bien tener un precio más reducido, para así poder competir con los demás hoteles. Por lo tanto, ya vemos que poder predecir el precio puede ser útil para diversos usuarios.
 
@@ -694,7 +695,7 @@ Finalmente, se ha querido ver si existe diferencias de precios entre hoteles que
 
 Por último, hemos intentado construir un modelo de clasificación de los hoteles según su rango de precios (Barato, Medio, Caro, Lujo) mediante árboles de decisión probando con distintas variables. Se ha hecho una separación de los datos en dos conjuntos: *training set* para el entrenamiento y *test set* para la prueba del modelo con datos desconocidos. Con el mejor modelo obtenido, se ha obtenido un `r round(ac6, 2)`% de *accuracy*. Es un resultado aceptable, aunque hemos visto que tiene bastantes problemas para clasificar correctamente los hoteles que no son de precio medio. Sin embargo, estamos satisfechos con el resultado obtenido, ya que con este dataset generado desde cero en la práctica anterior y sin ser analizado previamente, no sabíamos si realmente obtendríamos algún modelo que funcionase más o menos bien, pero hemos conseguido predecir correctamente más de la mitad de las observaciones que el modelo no había visto anteriormente.
 
-Sin embargo, para resolver el problema descrito en el inicio y poder tener una herramienta totalmente últil y que funcione adecuadamente, se necesitaría un esfuerzo extra para encontrar nuevas variables que nos ayuden a predecir mejor el precio de un hotel y probar otros modelos de clasificación que funcionen mejor con este problema, aunque estas tareas podrían ser perfectamente un proyecto serio para una empresa, debido a los recursos necesarios para conseguir una precisión óptima del modelo y que pueda funcionar de forma productiva.
+Sin embargo, para resolver el problema descrito en el inicio y poder tener una herramienta totalmente útil y que funcione adecuadamente, se necesitaría un esfuerzo extra para encontrar nuevas variables que nos ayuden a predecir mejor el precio de un hotel y probar otros modelos de clasificación que funcionen mejor con este problema, aunque estas tareas podrían ser perfectamente un proyecto serio para una empresa, debido a los recursos necesarios para conseguir una precisión óptima del modelo y que pueda funcionar de forma productiva.
 
 # Contribuciones
 
